@@ -17,14 +17,17 @@ public final class CharacterClient {
     public static final KeyMapping OPEN = new KeyMapping("key.jujutsurpg.character", GLFW.GLFW_KEY_K, "key.categories.jujutsurpg");
     public static final KeyMapping BLUE = new KeyMapping("Синий (Безграничность)", GLFW.GLFW_KEY_Z, "key.categories.jujutsurpg");
     public static final KeyMapping PURPLE = new KeyMapping("Фиолетовый (Безграничность)", GLFW.GLFW_KEY_X, "key.categories.jujutsurpg");
+    public static final KeyMapping RED = new KeyMapping("Красный (Безграничность)", GLFW.GLFW_KEY_C, "key.categories.jujutsurpg");
     @SubscribeEvent
     public static void tick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         var mc = Minecraft.getInstance();
         while (BLUE.consumeClick()) if (mc.player != null && mc.screen == null)
-            CharacterNetwork.CHANNEL.sendToServer(new CharacterNetwork.CastAbility(false));
+            CharacterNetwork.CHANNEL.sendToServer(new CharacterNetwork.CastAbility(0));
         while (PURPLE.consumeClick()) if (mc.player != null && mc.screen == null)
-            CharacterNetwork.CHANNEL.sendToServer(new CharacterNetwork.CastAbility(true));
+            CharacterNetwork.CHANNEL.sendToServer(new CharacterNetwork.CastAbility(1));
+        while (RED.consumeClick()) if (mc.player != null && mc.screen == null)
+            CharacterNetwork.CHANNEL.sendToServer(new CharacterNetwork.CastAbility(2));
         while (OPEN.consumeClick()) {
             if (mc.player != null && mc.screen == null) {
                 mc.setScreen(new CharacterScreen());
@@ -42,6 +45,6 @@ public final class CharacterClient {
     }
     @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static final class Registration {
-        @SubscribeEvent public static void register(RegisterKeyMappingsEvent event) { event.register(OPEN); event.register(BLUE); event.register(PURPLE); }
+        @SubscribeEvent public static void register(RegisterKeyMappingsEvent event) { event.register(OPEN); event.register(BLUE); event.register(PURPLE); event.register(RED); }
     }
 }

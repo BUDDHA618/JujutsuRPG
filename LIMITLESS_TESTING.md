@@ -1,30 +1,33 @@
-# Limitless combat prototype
+# Limitless animated prototype
 
-JDK17 / Forge 47.4.28 / Minecraft 1.20.1.
-Provisional tuning, not final canonical balance or mastery progression.
+Minecraft 1.20.1 / Forge 47.4.28 / JDK17. Build passes; live visual/gameplay QA pending.
+K -> DEV: Gojo / limitless / awakened=yes / Apply / Restore CE.
+Z Blue: 16-tick charge, 5-block center travel, 4 damage on contact,
+nearby mobs pulled toward caster for up to 40 ticks after charge. Cost20, cooldown80ticks.
+C Red: 16-tick charge, 10-block center travel, 10 damage and outward impulse.
+Cost30, cooldown100ticks.
+X Purple: 36-tick charge combining red and blue rings, 30-block center travel,
+1.5-block spherical radius (diameter3), 24 damage once per target. Cost60, cooldown200ticks.
+Costs/damage/cooldowns are TEST DEFAULTS, not final balance.
 
-K -> DEV: select Gojo, limitless, awakened=yes, Apply. Restore CE. Close menu.
-Z: Blue. Aim up to 18 blocks. Attracts living targets within radius 5 for 3 seconds,
-damages targets near its center (3 damage every 10 ticks), breaks nearby blocks with drops.
-Cost 20 CE, output 20, cooldown 4 seconds.
-X: Purple. 48-block moving sweep, radius 1.6, 24 damage once per target,
-breaks blocks without drops. Cost 60 CE, output 60, cooldown 10 seconds.
-Both require awakened Limitless and control >=1; clan alone does not grant the technique.
-Only one cast per player at a time. Server owns direction, position, cost and effects.
-Death, dimension change or logout ends the cast. Cooldown timestamps persist.
+All shots start in front of caster and sweep in half-block increments at 1.5blocks/tick.
+Length specifies center travel through terrain; spherical endcaps extend by the radius.
+Purple block selection uses block centers inside the sphere; entities use sphere vs AABB.
+Blue/Red drop blocks; Purple removes them without drops.
+Unbreakables, block entities, protected spawn and Forge break cancellation remain respected.
 
-World interaction: skips unbreakable blocks and block entities; checks mayBuild,
-spawn protection, world border, loaded chunks and Forge block-break cancellation.
-PvP damage respects server PvP setting and friendly-fire/team rules.
+Charge is rendered with rotating colored rings and a white core; Purple merges red/blue.
+Moving shots have concentric rings, colored core/trail, launch sound and endpoint pulse.
+Aim is captured at release, so caster can aim during charge. Only one active cast per player.
+Damage and destruction occur only after charge. Death/logout/dimension change cancels casting.
+Existing DEV infinite CE does not disable cooldown, output, control or overload.
 
-Manual verification pending in a disposable world:
-1. Before awakening/with another technique, both keys reject casting.
-2. Blue attracts mobs, damages at center, pulls no caster, drops broken blocks.
-3. Purple hits mobs once, cuts terrain, leaves bedrock/chests intact.
-4. At zero CE neither fires; rapid key spam cannot bypass cooldown.
-5. Verify protected spawn / protection mod cancellation and PvP=false.
-6. Logout, die or change dimension during Blue; old cast must disappear.
-7. Rejoin/restart; chosen technique and remaining game-time cooldown persist.
-8. Test with two clients; particles and block changes visible to both.
-
-Build passes on JDK17. No live gameplay test performed yet.
+Manual verification in a test world:
+- Z/C/X: visible charge at caster before any block damage, then moving projectile.
+- Purple cuts a diameter3 corridor through a wall with 30-block center travel.
+- Red penetrates10 and pushes targets away; Blue penetrates5 and pulls groups toward caster.
+- Compare Red10 and Purple24 damage on fresh targets.
+- Test upward/downward shots, low ceilings, world border, unloaded chunks and two clients.
+- Check no casting with hidden/non-Limitless technique, zero CE or cooldown.
+- Check protected blocks/chests/bedrock survive, PvP/team rules remain respected.
+- Set particles to All for visual evaluation; check C key conflicts in Controls.

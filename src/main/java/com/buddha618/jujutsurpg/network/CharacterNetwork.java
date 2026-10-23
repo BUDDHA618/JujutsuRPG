@@ -14,7 +14,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "6", "6"::equals, "6"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "7", "7"::equals, "7"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
@@ -26,11 +26,11 @@ public final class CharacterNetwork {
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(CastAbility.class, 5, NetworkDirection.PLAY_TO_SERVER)
-            .encoder((m,b) -> b.writeBoolean(m.purple()))
-            .decoder(b -> new CastAbility(b.readBoolean()))
+            .encoder((m,b) -> b.writeByte(m.kind()))
+            .decoder(b -> new CastAbility(b.readUnsignedByte()))
             .consumerMainThread((m,context) -> {
                 var player=context.get().getSender();
-                if(player!=null) com.buddha618.jujutsurpg.techniques.LimitlessAbilities.activate(player,m.purple());
+                if(player!=null) com.buddha618.jujutsurpg.techniques.LimitlessAbilities.activate(player,m.kind());
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Developer.class, 4, NetworkDirection.PLAY_TO_SERVER)
@@ -114,7 +114,7 @@ public final class CharacterNetwork {
         public final boolean infinite;
         public DeveloperStateEvent(boolean infinite) { this.infinite = infinite; }
     }
-    public record CastAbility(boolean purple) {}
+    public record CastAbility(int kind) {}
     public record Developer(String action, String clan, String technique, boolean awakened) {}
     public record Reinforce(boolean defense) {}
     public record Request() {}

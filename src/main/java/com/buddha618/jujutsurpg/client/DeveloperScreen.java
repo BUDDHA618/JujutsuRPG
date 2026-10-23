@@ -41,7 +41,7 @@ public final class DeveloperScreen extends Screen {
     @Override public void render(GuiGraphics g, int x, int y, float partial) {
         renderBackground(g);
         g.drawCenteredString(font, title, width / 2, 10, 0xFFD080);
-        g.drawCenteredString(font, "DEV: меняет сохранение! Безграничность: Z — Синий, X — Фиолетовый.", width / 2, 22, 0xFFFFFF);
+        g.drawCenteredString(font, "DEV: Z — Синий / X — Фиолетовый / C — Красный", width / 2, 22, 0xFFFFFF);
         super.render(g, x, y, partial);
     }
     @Override public boolean isPauseScreen() { return false; }
