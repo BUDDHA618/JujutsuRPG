@@ -23,6 +23,13 @@ public class JJKCommands {
 
         event.getDispatcher().register(
                 Commands.literal("jjk")
+                        .then(Commands.literal("test-awaken")
+                            .requires(source -> source.hasPermission(2))
+                            .executes(context -> {
+                                var player = context.getSource().getPlayerOrException();
+                                return GeneticsSavedData.get(player.getServer())
+                                    .completeAwakening(player.getUUID()) ? 1 : 0;
+                            }))
                         .then(Commands.literal("genetics")
                                 .executes(context -> {
 
@@ -38,7 +45,7 @@ public class JJKCommands {
                                                     "Клан: " +
                                                             profile.clan().getDisplayName()
                                                             + " | Техника: " +
-                                                            profile.technique().getId()
+                                                            GeneticsSavedData.get(player.getServer()).visibleTechnique(player.getUUID())
                                             )
                                     );
 

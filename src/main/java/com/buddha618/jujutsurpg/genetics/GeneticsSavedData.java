@@ -34,6 +34,21 @@ public class GeneticsSavedData extends SavedData {
         return tag;
     }
 
+    public String visibleTechnique(UUID uuid) {
+        if (!hasProfile(uuid)) return "hidden";
+        CompoundTag profile = players.getCompound(uuid.toString());
+        return profile.getBoolean("Awakened") ? profile.getString("Technique") : "hidden";
+    }
+
+    /** Test-only server completion hook. Never rerolls a profile. */
+    public boolean completeAwakening(UUID uuid) {
+        if (!hasProfile(uuid)) return false;
+        var profile = players.getCompound(uuid.toString());
+        profile.putBoolean("Awakened", true);
+        setDirty();
+        return true;
+    }
+
     public boolean hasProfile(UUID uuid) {
         return players.contains(uuid.toString(), Tag.TAG_COMPOUND);
     }

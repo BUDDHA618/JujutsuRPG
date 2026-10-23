@@ -41,7 +41,7 @@ public class GeneticsEvents {
         player.sendSystemMessage(Component.literal(
                 message
                         + "Клан: " + profile.clan().getDisplayName()
-                        + " | Техника: " + profile.technique().getId()
+                        + " | Техника: " + GeneticsSavedData.get(player.getServer()).visibleTechnique(player.getUUID())
         ));
     }
 }

@@ -37,7 +37,7 @@ public final class CharacterNetwork {
                     if (data.hasProfile(player.getUUID())) {
                         var profile = data.getOrCreate(player.getUUID());
                         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                            new Profile(profile.clan().getDisplayName(), profile.technique().getId()));
+                            new Profile(profile.clan().getDisplayName(), GeneticsSavedData.get(player.getServer()).visibleTechnique(player.getUUID())));
                     }
                 }
                 context.get().setPacketHandled(true);
@@ -71,5 +71,3 @@ public final class CharacterNetwork {
         public ProfileEvent(Profile profile) { this.profile = profile; }
     }
 }
-
-
