@@ -19,6 +19,7 @@ Operator test commands:
 /summon jujutsurpg:student_mage
 Manual /place overwrites a large area: use a disposable world with space.
 
+Jigsaw radius116 + terrain padding12 = vanilla maximum128 (regression guard: tools/check_worldgen.py).
 Build JDK17 and binary NBT/palette/resource checks passed. Live worldgen/client QA pending.
 Verify /locate and /place, rotation, terrain foundation, rooms/lighting/pathfinding,
 12 NPCs, save/reload/patrol, curse combat and no attacks on players.
