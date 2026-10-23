@@ -14,10 +14,17 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "7", "7"::equals, "7"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "8", "8"::equals, "8"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
+        CHANNEL.messageBuilder(AbilityVisual.class, 7, NetworkDirection.PLAY_TO_CLIENT)
+            .encoder((m,b) -> {b.writeInt(m.owner());b.writeByte(m.kind());b.writeDouble(m.x());b.writeDouble(m.y());b.writeDouble(m.z());})
+            .decoder(b -> new AbilityVisual(b.readInt(),b.readUnsignedByte(),b.readDouble(),b.readDouble(),b.readDouble()))
+            .consumerMainThread((m,c) -> {
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new AbilityVisualEvent(m));
+                c.get().setPacketHandled(true);
+            }).add();
         CHANNEL.messageBuilder(DeveloperState.class, 6, NetworkDirection.PLAY_TO_CLIENT)
             .encoder((m,b) -> b.writeBoolean(m.infinite()))
             .decoder(b -> new DeveloperState(b.readBoolean()))
@@ -108,6 +115,11 @@ public final class CharacterNetwork {
     public static final class EnergyEvent extends net.minecraftforge.eventbus.api.Event {
         public final Energy energy;
         public EnergyEvent(Energy energy) { this.energy = energy; }
+    }
+    public record AbilityVisual(int owner,int kind,double x,double y,double z) {}
+    public static final class AbilityVisualEvent extends net.minecraftforge.eventbus.api.Event {
+        public final AbilityVisual visual;
+        public AbilityVisualEvent(AbilityVisual visual) {this.visual=visual;}
     }
     public record DeveloperState(boolean infinite) {}
     public static final class DeveloperStateEvent extends net.minecraftforge.eventbus.api.Event {

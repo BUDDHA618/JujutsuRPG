@@ -36,7 +36,7 @@ public final class LimitlessAbilities {
         final Set<UUID> hit = new HashSet<>();
         final Set<BlockPos> checked = new HashSet<>();
         Cast(int kind) { this.kind=kind; }
-        int charge() { return kind==1 ? 36 : 16; }
+        int charge() { return 0; }
         double range() { return kind==1 ? 30 : kind==2 ? 10 : 5; }
         double radius() { return kind==1 ? 1.5 : 1; }
         DustParticleOptions color() { return kind==1 ? PURPLE : kind==2 ? RED : BLUE; }
@@ -84,20 +84,6 @@ public final class LimitlessAbilities {
             ACTIVE.remove(p.getUUID()); return;
         }
         var level=p.serverLevel();
-        if(c.age<c.charge()) {
-            Vec3 dir=p.getLookAngle().normalize();
-            Vec3 hand=p.getEyePosition().add(dir.scale(1.5)).add(0,-.2,0);
-            double progress=(c.age+1.0)/c.charge();
-            if(c.kind==1) {
-                Vec3 side=dir.cross(new Vec3(0,1,0)).normalize().scale(1-progress);
-                ring(p,hand.add(side),dir,.18+progress*.3,c.age*.45,BLUE,12);
-                ring(p,hand.subtract(side),dir,.18+progress*.3,-c.age*.45,RED,12);
-            }
-            ring(p,hand,dir,1.3-progress,c.age*.5,c.color(),20);
-            ring(p,hand,dir,.15+progress*.3,-c.age*.7,WHITE,10);
-            c.age++;
-            return;
-        }
         if(c.position==null) {
             c.direction=p.getLookAngle().normalize();
             c.position=p.getEyePosition().add(c.direction.scale(.5));
@@ -110,9 +96,7 @@ public final class LimitlessAbilities {
             c.travelled+=distance;
             BlockPos center=BlockPos.containing(c.position);
             if(!level.hasChunkAt(center) || !level.getWorldBorder().isWithinBounds(center)) { ACTIVE.remove(p.getUUID()); return; }
-            ring(p,c.position,c.direction,c.radius(),c.age*.6,c.color(),20);
-            ring(p,c.position,c.direction,c.radius()*.55,-c.age*.7,WHITE,10);
-            dot(p,c.position,c.color());
+
             for(LivingEntity target:level.getEntitiesOfClass(LivingEntity.class,new AABB(c.position,c.position).inflate(c.radius()))) {
                 if(!valid(p,target) || !touches(target.getBoundingBox(),c.position,c.radius())) continue;
                 if(c.hit.add(target.getUUID())) {
@@ -146,11 +130,15 @@ public final class LimitlessAbilities {
                     target.hurtMarked=true;
                 }
             }
-            ring(p,c.position,c.direction,1.2+.3*Math.sin(c.age*.4),c.age*.5,BLUE,20);
+
         }
+        com.buddha618.jujutsurpg.network.CharacterNetwork.CHANNEL.send(
+            net.minecraftforge.network.PacketDistributor.NEAR.with(() -> new net.minecraftforge.network.PacketDistributor.TargetPoint(
+                c.position.x,c.position.y,c.position.z,64,level.dimension())),
+            new com.buddha618.jujutsurpg.network.CharacterNetwork.AbilityVisual(p.getId(),c.kind,c.position.x,c.position.y,c.position.z));
         c.age++;
         if(c.travelled>=c.range() && (c.kind!=0 || c.age>=c.charge()+40)) {
-            for(int i=0;i<3;i++) ring(p,c.position,c.direction,c.radius()+i*.35,c.age*.3,c.color(),24);
+
             sound(p,net.minecraft.sounds.SoundEvents.GENERIC_EXPLODE,.5f,c.kind==1 ? .7f : 1.5f);
             ACTIVE.remove(p.getUUID());
         }
