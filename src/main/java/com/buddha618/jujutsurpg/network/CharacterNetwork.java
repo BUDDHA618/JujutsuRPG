@@ -14,10 +14,18 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "2", "2"::equals, "2"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "3", "3"::equals, "3"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
+        CHANNEL.messageBuilder(Reinforce.class, 3, NetworkDirection.PLAY_TO_SERVER)
+            .encoder((message, buffer) -> buffer.writeBoolean(message.defense()))
+            .decoder(buffer -> new Reinforce(buffer.readBoolean()))
+            .consumerMainThread((message, context) -> {
+                var player = context.get().getSender();
+                if (player != null) com.buddha618.jujutsurpg.energy.EnergyReinforcement.activate(player, message.defense());
+                context.get().setPacketHandled(true);
+            }).add();
         CHANNEL.messageBuilder(Request.class, 0, NetworkDirection.PLAY_TO_SERVER)
             .encoder((message, buffer) -> {}).decoder(buffer -> new Request())
             .consumerMainThread((message, context) -> {
@@ -55,6 +63,7 @@ public final class CharacterNetwork {
         public final Energy energy;
         public EnergyEvent(Energy energy) { this.energy = energy; }
     }
+    public record Reinforce(boolean defense) {}
     public record Request() {}
     public record Profile(String clan, String technique) {}
     public static final class ProfileEvent extends net.minecraftforge.eventbus.api.Event {
@@ -62,4 +71,5 @@ public final class CharacterNetwork {
         public ProfileEvent(Profile profile) { this.profile = profile; }
     }
 }
+
 
