@@ -213,3 +213,10 @@ tasks.register('checkBuilderTemplate', JavaExec) {
     args file('src/main/resources/data/jujutsurpg/structures/technical_college/campus.nbt').absolutePath
 }
 tasks.named('check') { dependsOn 'checkBuilderTemplate' }
+
+ tasks.register('checkReferenceBundle', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.buddha618.jujutsurpg.ReferenceBundleCheck'
+    args file('output/reference_college').absolutePath
+ }

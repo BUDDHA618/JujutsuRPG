@@ -1,0 +1,45 @@
+{
+  "size": [
+    240,
+    64,
+    240
+  ],
+  "shared_origin": true,
+  "modules": [
+    {
+      "file": "01_territory.nbt",
+      "blocks": 186819,
+      "states": 12
+    },
+    {
+      "file": "02_main_four_floors.nbt",
+      "blocks": 34489,
+      "states": 12
+    },
+    {
+      "file": "03_dormitories.nbt",
+      "blocks": 35580,
+      "states": 14
+    },
+    {
+      "file": "04_library_laboratories.nbt",
+      "blocks": 30209,
+      "states": 15
+    },
+    {
+      "file": "05_dining_medical.nbt",
+      "blocks": 19978,
+      "states": 15
+    },
+    {
+      "file": "06_sports.nbt",
+      "blocks": 20669,
+      "states": 20
+    },
+    {
+      "file": "07_temple_training.nbt",
+      "blocks": 14545,
+      "states": 16
+    }
+  ]
+}
