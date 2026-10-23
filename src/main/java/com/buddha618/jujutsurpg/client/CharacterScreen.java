@@ -31,7 +31,7 @@ public final class CharacterScreen extends Screen {
                 default -> "Нет";
             };
             String[] rows = {"Клан: " + profile.clan(), "Техника: " + technique,
-                "Генетический признак: в разработке", "Энергия: —", "Уровень: —", "Ранг: —"};
+                "Генетический признак: в разработке", EnergyHud.description(), "Уровень: —", "Ранг: —"};
             for (int i = 0; i < rows.length; i++) {
                 int y = top + 47 + i * 27;
                 graphics.fill(left + 12, y - 5, right - 12, y + 17, 0xFF22283E);
@@ -42,3 +42,4 @@ public final class CharacterScreen extends Screen {
     }
     @Override public boolean isPauseScreen() { return false; }
 }
+

@@ -14,7 +14,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "1", "1"::equals, "1"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "2", "2"::equals, "2"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
@@ -23,6 +23,7 @@ public final class CharacterNetwork {
             .consumerMainThread((message, context) -> {
                 var player = context.get().getSender();
                 if (player != null) {
+                    com.buddha618.jujutsurpg.energy.CursedEnergy.get(player).sync(player);
                     var data = GeneticsSavedData.get(player.getServer());
                     // Login creates the profile. Opening this screen never generates one.
                     if (data.hasProfile(player.getUUID())) {
@@ -31,6 +32,13 @@ public final class CharacterNetwork {
                             new Profile(profile.clan().getDisplayName(), profile.technique().getId()));
                     }
                 }
+                context.get().setPacketHandled(true);
+            }).add();
+        CHANNEL.messageBuilder(Energy.class, 2, NetworkDirection.PLAY_TO_CLIENT)
+            .encoder((message, buffer) -> { buffer.writeDouble(message.current()); buffer.writeDouble(message.maximum()); buffer.writeDouble(message.regeneration()); })
+            .decoder(buffer -> new Energy(buffer.readDouble(), buffer.readDouble(), buffer.readDouble()))
+            .consumerMainThread((message, context) -> {
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new EnergyEvent(message));
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Profile.class, 1, NetworkDirection.PLAY_TO_CLIENT)
@@ -42,6 +50,11 @@ public final class CharacterNetwork {
                 context.get().setPacketHandled(true);
             }).add();
     }
+    public record Energy(double current, double maximum, double regeneration) {}
+    public static final class EnergyEvent extends net.minecraftforge.eventbus.api.Event {
+        public final Energy energy;
+        public EnergyEvent(Energy energy) { this.energy = energy; }
+    }
     public record Request() {}
     public record Profile(String clan, String technique) {}
     public static final class ProfileEvent extends net.minecraftforge.eventbus.api.Event {
@@ -49,3 +62,4 @@ public final class CharacterNetwork {
         public ProfileEvent(Profile profile) { this.profile = profile; }
     }
 }
+
