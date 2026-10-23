@@ -45,6 +45,9 @@ public final class CharacterClient {
     }
     @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static final class Registration {
+        @SubscribeEvent public static void overlays(net.minecraftforge.client.event.RegisterGuiOverlaysEvent event) {
+            event.registerAbove(net.minecraftforge.client.gui.overlay.VanillaGuiOverlay.FOOD_LEVEL.id(),"cursed_energy",EnergyHud::render);
+        }
         @SubscribeEvent public static void register(RegisterKeyMappingsEvent event) { event.register(OPEN); event.register(BLUE); event.register(PURPLE); event.register(RED); }
     }
 }
