@@ -7,7 +7,12 @@ On a dedicated server files belong on SERVER, not client. No restart/reload need
 Supported: compressed vanilla structure NBT with palette, blocks, size. Not .schem/.litematic.
 Names: ASCII letters/digits/underscore/hyphen, extension .nbt. Max100 library entries.
 
-Choose a file (button cycles files), enter X/Y/Z (template origin/corner), rotate90,
+Default Nearby mode subtracts the actual occupied-block bounding minimum after rotation.
+The nearest corner of the building, rather than a distant template offset, lands on X/Y/Z.
+Position near player uses facing direction8blocks and feetY-1; pressing it also requests preview.
+Opening menu without a valid preview refreshes that position. Build rejects changed file/anchor/rotation.
+For assembling the240x240 campus, toggle to shared module origin mode (original NBT offsets).
+Choose a file (button cycles files), enter X/Y/Z, rotate90,
 click Preview. Close with Осмотреть to fly around. Reopen Builder to confirm Build.
 The blue-tinted translucent block models are client-only; preview does not modify world.
 Preview shows up to4096 exposed block models within32blocks of camera; fly around for large builds.

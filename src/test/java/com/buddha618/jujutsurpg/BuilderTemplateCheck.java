@@ -28,6 +28,20 @@ public final class BuilderTemplateCheck {
             for(int t=0;t<turns;t++){int old=x;x=-z;z=old;}
             if(Math.abs(x)>256||Math.abs(z)>256)throw new AssertionError("Rotation range");
         }
+        var source=java.util.List.of(new net.minecraft.core.BlockPos(78,2,124),new net.minecraft.core.BlockPos(140,45,160));
+        for(var rotation:net.minecraft.world.level.block.Rotation.values()) {
+            var rotated=source.stream().map(pos->pos.rotate(rotation)).toList();
+            var anchor=new net.minecraft.core.BlockPos(-300,70,900);
+            var shift=com.buddha618.jujutsurpg.builder.BuilderPlacement.shiftToAnchor(rotated,anchor);
+            var placed=rotated.stream().map(pos->pos.offset(shift)).toList();
+            if(placed.stream().mapToInt(net.minecraft.core.BlockPos::getX).min().orElseThrow()!=anchor.getX()
+                || placed.stream().mapToInt(net.minecraft.core.BlockPos::getY).min().orElseThrow()!=anchor.getY()
+                || placed.stream().mapToInt(net.minecraft.core.BlockPos::getZ).min().orElseThrow()!=anchor.getZ())
+                throw new AssertionError("Offset/negative-world/rotation regression: "+rotation);
+            if(!placed.get(1).subtract(placed.get(0)).equals(rotated.get(1).subtract(rotated.get(0))))
+                throw new AssertionError("Geometry changed");
+        }
+        System.out.println("Placement anchor regression passed, all4 rotations, source offsets and negative world coordinates");
         System.out.println("Builder NBT check passed: "+solid+" non-air blocks, bounded read + all4 rotations");
     }
 }

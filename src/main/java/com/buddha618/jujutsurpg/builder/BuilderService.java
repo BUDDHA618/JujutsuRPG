@@ -23,7 +23,7 @@ import java.util.zip.GZIPInputStream;
 public final class BuilderService {
     private record Entry(BlockPos pos,BlockState state) {}
     private record Change(BlockPos pos,BlockState before,BlockState after) {}
-    private record Plan(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension,List<Entry> blocks) {}
+    private record Plan(net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dimension,List<Entry> blocks,String file,BlockPos anchor,int rotation) {}
     private static final Map<UUID,Plan> PLANS=new HashMap<>();
     private record Undo(Plan plan,List<Change> changes) {}
     private static final Map<UUID,Undo> UNDO=new HashMap<>();
@@ -52,7 +52,7 @@ public final class BuilderService {
                 try(var stream=Files.list(folder())) {send(p,new BuilderNetwork.Library(String.join("\n",stream.filter(f->Files.isRegularFile(f,LinkOption.NOFOLLOW_LINKS)&&f.getFileName().toString().matches("[a-zA-Z0-9_-]+\\.nbt")).map(f->f.getFileName().toString()).sorted().limit(100).toList())));}
             } else if(m.action().equals("clear")) {
                 PLANS.remove(p.getUUID());send(p,new BuilderNetwork.Preview(true,true,new long[0],new int[0]));
-            } else if(m.action().equals("preview")) {
+            } else if((m.action().equals("preview") || m.action().equals("aligned"))) {
                 if(job!=null) {tell(p,"Дождитесь завершения текущей операции.");return;}
                 PLANS.remove(p.getUUID());send(p,new BuilderNetwork.Preview(true,false,new long[0],new int[0]));
                 if(!m.file().matches("[a-zA-Z0-9_-]+\\.nbt")||m.rotation()>3)throw new IOException("Неверное имя/поворот");
@@ -75,12 +75,21 @@ public final class BuilderService {
                     if(block.contains("nbt") || bs.hasBlockEntity() || bs.getBlock() instanceof net.minecraft.world.level.block.CommandBlock)continue;
                     var relative=new BlockPos(xyz.getInt(0),xyz.getInt(1),xyz.getInt(2)).rotate(rotation);
                     var absolute=m.origin().offset(relative);
-                    if(!p.serverLevel().getWorldBorder().isWithinBounds(absolute)||p.serverLevel().isOutsideBuildHeight(absolute)||absolute.distSqr(p.blockPosition())>256*256)throw new IOException("Постройка вне высоты/границы/256 блоков от игрока");
+
                     entries.add(new Entry(absolute,bs));
                     if(entries.size()>200000)throw new IOException("Лимит:200000 непустых блоков");
                 }
                 if(entries.isEmpty())throw new IOException("Нет подходящих блоков");
-                PLANS.put(p.getUUID(),new Plan(p.level().dimension(),List.copyOf(entries)));
+                if(m.action().equals("preview")) {
+                    var shift=BuilderPlacement.shiftToAnchor(entries.stream().map(Entry::pos).toList(),m.origin());
+                    List<Entry> normalized=new ArrayList<>();
+                    for(var entry:entries)normalized.add(new Entry(entry.pos().offset(shift),entry.state()));
+                    entries=normalized;
+                }
+                for(var entry:entries)if(!p.serverLevel().getWorldBorder().isWithinBounds(entry.pos())
+                    ||p.serverLevel().isOutsideBuildHeight(entry.pos())||entry.pos().distSqr(p.blockPosition())>256*256)
+                    throw new IOException("Конечная позиция вне допустимой области");
+                PLANS.put(p.getUUID(),new Plan(p.level().dimension(),List.copyOf(entries),m.file(),m.origin(),m.rotation()));
                 for(int start=0;start<entries.size();start+=2048) {
                     int n=Math.min(2048,entries.size()-start);long[] positions=new long[n];int[] states=new int[n];
                     for(int i=0;i<n;i++){var b=entries.get(start+i);positions[i]=b.pos().asLong();states[i]=Block.getId(b.state());}
@@ -90,6 +99,9 @@ public final class BuilderService {
             } else if(m.action().equals("build")) {
                 if(job!=null){tell(p,"Операция уже выполняется.");return;}
                 var plan=PLANS.get(p.getUUID());if(plan==null||plan.dimension()!=p.level().dimension()){tell(p,"Сначала обновите предпросмотр.");return;}
+                if(!plan.file().equals(m.file())||!plan.anchor().equals(m.origin())||plan.rotation()!=m.rotation()) {
+                    tell(p,"Позиция, файл или поворот изменены: сначала обновите предпросмотр.");return;
+                }
                 job=new Job(p,plan,false,new ArrayList<>());UNDO.remove(p.getUUID());tell(p,"Начато размещение.");
             } else if(m.action().equals("undo")) {
                 if(job!=null){tell(p,"Дождитесь завершения операции.");return;}
