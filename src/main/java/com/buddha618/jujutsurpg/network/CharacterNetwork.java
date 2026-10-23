@@ -14,10 +14,18 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "4", "4"::equals, "4"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "5", "5"::equals, "5"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
+        CHANNEL.messageBuilder(CastAbility.class, 5, NetworkDirection.PLAY_TO_SERVER)
+            .encoder((m,b) -> b.writeBoolean(m.purple()))
+            .decoder(b -> new CastAbility(b.readBoolean()))
+            .consumerMainThread((m,context) -> {
+                var player=context.get().getSender();
+                if(player!=null) com.buddha618.jujutsurpg.techniques.LimitlessAbilities.activate(player,m.purple());
+                context.get().setPacketHandled(true);
+            }).add();
         CHANNEL.messageBuilder(Developer.class, 4, NetworkDirection.PLAY_TO_SERVER)
             .encoder((m, b) -> { b.writeUtf(m.action(), 16); b.writeUtf(m.clan(), 64); b.writeUtf(m.technique(), 64); b.writeBoolean(m.awakened()); })
             .decoder(b -> new Developer(b.readUtf(16), b.readUtf(64), b.readUtf(64), b.readBoolean()))
@@ -86,6 +94,7 @@ public final class CharacterNetwork {
         public final Energy energy;
         public EnergyEvent(Energy energy) { this.energy = energy; }
     }
+    public record CastAbility(boolean purple) {}
     public record Developer(String action, String clan, String technique, boolean awakened) {}
     public record Reinforce(boolean defense) {}
     public record Request() {}
