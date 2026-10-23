@@ -86,6 +86,16 @@ public final class CursedEnergy extends SavedData {
     }
     private record Use(long tick, double output) {}
     private final java.util.Map<java.util.UUID, java.util.ArrayDeque<Use>> recentUses = new java.util.HashMap<>();
+    public void developerRestore(ServerPlayer player) {
+        var p = profile(player);
+        p.putDouble("Current", finite(p.getDouble("Capacity"), 1, 1000000));
+        p.putDouble("Strain", 0);
+        p.putBoolean("Overloaded", false);
+        p.putInt("OverloadRemaining", 0);
+        recentUses.remove(player.getUUID());
+        setDirty();
+        sync(player);
+    }
     public void sync(ServerPlayer player) {
         var p = profile(player);
         CharacterNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),

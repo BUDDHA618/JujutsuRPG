@@ -17,6 +17,12 @@ public final class CharacterScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Усилить защиту"), button -> reinforce(true))
             .bounds(width / 2 + 4, top + 185, 144, 20)
             .tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal("50% текущей ПЭ • Сопротивление I • 10 секунд"))).build());
+        if (net.minecraft.client.Minecraft.getInstance().player != null
+                && net.minecraft.client.Minecraft.getInstance().player.hasPermissions(2)) {
+            addRenderableWidget(Button.builder(Component.literal("DEV"), button ->
+                net.minecraft.client.Minecraft.getInstance().setScreen(new DeveloperScreen()))
+                .bounds(width / 2 + 94, Math.min(height - 26, top + 210), 54, 20).build());
+        }
         addRenderableWidget(Button.builder(Component.literal("Закрыть"), button -> onClose())
             .bounds(width / 2 - 60, Math.min(height - 26, top + 210), 120, 20).build());
     }
@@ -35,6 +41,7 @@ public final class CharacterScreen extends Screen {
                 case "ten_shadows" -> "Десять теней";
                 case "projection_sorcery" -> "Проекционная магия";
                 case "blood_manipulation" -> "Управление кровью";
+                case "hidden" -> "Скрыта до пробуждения";
                 default -> "Нет";
             };
             String[] rows = {"Клан: " + profile.clan(), "Техника: " + technique,

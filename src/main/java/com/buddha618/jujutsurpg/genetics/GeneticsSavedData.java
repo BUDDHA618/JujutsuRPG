@@ -49,6 +49,16 @@ public class GeneticsSavedData extends SavedData {
         return true;
     }
 
+    /** Explicit operator override; preserves unrelated profile data. */
+    public void developerSet(UUID uuid, Clan clan, InnateTechnique technique, boolean awakened) {
+        getOrCreate(uuid);
+        var p = players.getCompound(uuid.toString());
+        p.putString("Clan", clan.getId());
+        p.putString("Technique", technique.getId());
+        p.putBoolean("Awakened", awakened);
+        setDirty();
+    }
+
     public boolean hasProfile(UUID uuid) {
         return players.contains(uuid.toString(), Tag.TAG_COMPOUND);
     }

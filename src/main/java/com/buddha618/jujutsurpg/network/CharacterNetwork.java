@@ -14,10 +14,33 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "3", "3"::equals, "3"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "4", "4"::equals, "4"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
+        CHANNEL.messageBuilder(Developer.class, 4, NetworkDirection.PLAY_TO_SERVER)
+            .encoder((m, b) -> { b.writeUtf(m.action(), 16); b.writeUtf(m.clan(), 64); b.writeUtf(m.technique(), 64); b.writeBoolean(m.awakened()); })
+            .decoder(b -> new Developer(b.readUtf(16), b.readUtf(64), b.readUtf(64), b.readBoolean()))
+            .consumerMainThread((m, context) -> {
+                var player = context.get().getSender();
+                if (player != null && player.hasPermissions(2)) {
+                    if (m.action().equals("restore")) {
+                        com.buddha618.jujutsurpg.energy.CursedEnergy.get(player).developerRestore(player);
+                        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("DEV: ПЭ восстановлена, перегрузка снята."));
+                    } else if (m.action().equals("profile")) {
+                        var clan = java.util.Arrays.stream(com.buddha618.jujutsurpg.genetics.Clan.values())
+                            .filter(v -> v.getId().equals(m.clan())).findFirst();
+                        var technique = java.util.Arrays.stream(com.buddha618.jujutsurpg.genetics.InnateTechnique.values())
+                            .filter(v -> v.getId().equals(m.technique())).findFirst();
+                        if (clan.isPresent() && technique.isPresent()) {
+                            GeneticsSavedData.get(player.getServer()).developerSet(player.getUUID(), clan.get(), technique.get(), m.awakened());
+                            player.sendSystemMessage(net.minecraft.network.chat.Component.literal("DEV: профиль изменён: " + clan.get().getDisplayName()
+                                + " / " + technique.get().getId() + " / пробуждение: " + m.awakened()));
+                        }
+                    }
+                }
+                context.get().setPacketHandled(true);
+            }).add();
         CHANNEL.messageBuilder(Reinforce.class, 3, NetworkDirection.PLAY_TO_SERVER)
             .encoder((message, buffer) -> buffer.writeBoolean(message.defense()))
             .decoder(buffer -> new Reinforce(buffer.readBoolean()))
@@ -63,6 +86,7 @@ public final class CharacterNetwork {
         public final Energy energy;
         public EnergyEvent(Energy energy) { this.energy = energy; }
     }
+    public record Developer(String action, String clan, String technique, boolean awakened) {}
     public record Reinforce(boolean defense) {}
     public record Request() {}
     public record Profile(String clan, String technique) {}
