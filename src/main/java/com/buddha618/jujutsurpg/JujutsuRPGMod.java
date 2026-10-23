@@ -68,6 +68,7 @@ public class JujutsuRPGMod
         modEventBus.addListener(this::commonSetup);
 
         // Register the Deferred Register to the mod event bus so blocks get registered
+        com.buddha618.jujutsurpg.curses.CurseEntities.register(modEventBus);
         BLOCKS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so items get registered
         ITEMS.register(modEventBus);

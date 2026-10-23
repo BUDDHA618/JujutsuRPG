@@ -1,1 +1,10 @@
-{"key.jujutsurpg.character":"Характеристики мага","key.categories.jujutsurpg":"JujutsuRPG"}
+{
+  "key.jujutsurpg.character": "Характеристики мага",
+  "key.categories.jujutsurpg": "JujutsuRPG",
+  "entity.jujutsurpg.jogo_curse": "Джого — вулканическое проклятие",
+  "item.jujutsurpg.jogo_spawn_egg": "Яйцо призыва: Джого — вулканическое проклятие",
+  "entity.jujutsurpg.hanami_curse": "Ханами — лесное проклятие",
+  "item.jujutsurpg.hanami_spawn_egg": "Яйцо призыва: Ханами — лесное проклятие",
+  "entity.jujutsurpg.mahito_curse": "Махито — сшитое проклятие",
+  "item.jujutsurpg.mahito_spawn_egg": "Яйцо призыва: Махито — сшитое проклятие"
+}

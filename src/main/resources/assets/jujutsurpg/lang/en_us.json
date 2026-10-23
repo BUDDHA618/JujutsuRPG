@@ -1,1 +1,10 @@
-{"key.jujutsurpg.character":"Sorcerer attributes","key.categories.jujutsurpg":"JujutsuRPG"}
+{
+  "key.jujutsurpg.character": "Sorcerer attributes",
+  "key.categories.jujutsurpg": "JujutsuRPG",
+  "entity.jujutsurpg.jogo_curse": "Jogo Volcano Curse",
+  "item.jujutsurpg.jogo_spawn_egg": "Jogo Volcano Curse Spawn Egg",
+  "entity.jujutsurpg.hanami_curse": "Hanami Forest Curse",
+  "item.jujutsurpg.hanami_spawn_egg": "Hanami Forest Curse Spawn Egg",
+  "entity.jujutsurpg.mahito_curse": "Mahito Stitched Curse",
+  "item.jujutsurpg.mahito_spawn_egg": "Mahito Stitched Curse Spawn Egg"
+}
