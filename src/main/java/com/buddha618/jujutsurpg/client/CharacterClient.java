@@ -33,6 +33,10 @@ public final class CharacterClient {
         }
     }
     @SubscribeEvent
+    public static void developerState(CharacterNetwork.DeveloperStateEvent event) {
+        if (Minecraft.getInstance().screen instanceof DeveloperScreen screen) screen.receiveInfinite(event.infinite);
+    }
+    @SubscribeEvent
     public static void profile(CharacterNetwork.ProfileEvent event) {
         if (Minecraft.getInstance().screen instanceof CharacterScreen screen) screen.profile = event.profile;
     }

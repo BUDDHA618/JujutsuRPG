@@ -69,9 +69,9 @@ public final class CursedEnergy extends SavedData {
         while (!uses.isEmpty() && now - uses.peekFirst().tick() >= 20) uses.removeFirst();
         double used = uses.stream().mapToDouble(Use::output).sum();
         double cost = baseCost / finite(p.getDouble("Efficiency"), .05, 1);
-        if (current(player) <= 0 || current(player) < cost || used + requiredOutput > output(player)
+        if ((!infinite(player) && (current(player) <= 0 || current(player) < cost)) || used + requiredOutput > output(player)
                 || finite(p.getDouble("Control"), 0, 1000000) < minimumControl) return false;
-        p.putDouble("Current", current(player) - cost);
+        if (!infinite(player)) p.putDouble("Current", current(player) - cost);
         uses.addLast(new Use(now, requiredOutput));
         // Test tuning: strain grows in proportion to output and decays at 5 units/sec.
         double strain = finite(p.getDouble("Strain") + requiredOutput / 2, 0, 100);
@@ -86,6 +86,17 @@ public final class CursedEnergy extends SavedData {
     }
     private record Use(long tick, double output) {}
     private final java.util.Map<java.util.UUID, java.util.ArrayDeque<Use>> recentUses = new java.util.HashMap<>();
+    public boolean infinite(ServerPlayer player) {
+        return player.hasPermissions(2) && profile(player).getBoolean("DeveloperInfiniteCE");
+    }
+    public void toggleInfinite(ServerPlayer player) {
+        if (!player.hasPermissions(2)) return;
+        var p = profile(player);
+        p.putBoolean("DeveloperInfiniteCE", !infinite(player));
+        setDirty();
+        if (infinite(player)) developerRestore(player);
+        else sync(player);
+    }
     public void developerRestore(ServerPlayer player) {
         var p = profile(player);
         p.putDouble("Current", finite(p.getDouble("Capacity"), 1, 1000000));

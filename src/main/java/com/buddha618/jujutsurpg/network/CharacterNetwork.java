@@ -14,10 +14,17 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "5", "5"::equals, "5"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "6", "6"::equals, "6"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
+        CHANNEL.messageBuilder(DeveloperState.class, 6, NetworkDirection.PLAY_TO_CLIENT)
+            .encoder((m,b) -> b.writeBoolean(m.infinite()))
+            .decoder(b -> new DeveloperState(b.readBoolean()))
+            .consumerMainThread((m,context) -> {
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new DeveloperStateEvent(m.infinite()));
+                context.get().setPacketHandled(true);
+            }).add();
         CHANNEL.messageBuilder(CastAbility.class, 5, NetworkDirection.PLAY_TO_SERVER)
             .encoder((m,b) -> b.writeBoolean(m.purple()))
             .decoder(b -> new CastAbility(b.readBoolean()))
@@ -32,7 +39,15 @@ public final class CharacterNetwork {
             .consumerMainThread((m, context) -> {
                 var player = context.get().getSender();
                 if (player != null && player.hasPermissions(2)) {
-                    if (m.action().equals("restore")) {
+                    if (m.action().equals("infinite") || m.action().equals("state")) {
+                        var energy = com.buddha618.jujutsurpg.energy.CursedEnergy.get(player);
+                        if (m.action().equals("infinite")) {
+                            energy.toggleInfinite(player);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                "DEV: бесконечная ПЭ " + (energy.infinite(player) ? "включена" : "выключена")), true);
+                        }
+                        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new DeveloperState(energy.infinite(player)));
+                    } else if (m.action().equals("restore")) {
                         com.buddha618.jujutsurpg.energy.CursedEnergy.get(player).developerRestore(player);
                         player.sendSystemMessage(net.minecraft.network.chat.Component.literal("DEV: ПЭ восстановлена, перегрузка снята."));
                     } else if (m.action().equals("profile")) {
@@ -93,6 +108,11 @@ public final class CharacterNetwork {
     public static final class EnergyEvent extends net.minecraftforge.eventbus.api.Event {
         public final Energy energy;
         public EnergyEvent(Energy energy) { this.energy = energy; }
+    }
+    public record DeveloperState(boolean infinite) {}
+    public static final class DeveloperStateEvent extends net.minecraftforge.eventbus.api.Event {
+        public final boolean infinite;
+        public DeveloperStateEvent(boolean infinite) { this.infinite = infinite; }
     }
     public record CastAbility(boolean purple) {}
     public record Developer(String action, String clan, String technique, boolean awakened) {}
