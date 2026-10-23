@@ -27,8 +27,11 @@ public class JJKCommands {
                             .requires(source -> source.hasPermission(2))
                             .executes(context -> {
                                 var player = context.getSource().getPlayerOrException();
-                                return GeneticsSavedData.get(player.getServer())
-                                    .completeAwakening(player.getUUID()) ? 1 : 0;
+                                boolean completed = GeneticsSavedData.get(player.getServer()).completeAwakening(player.getUUID());
+                                player.sendSystemMessage(Component.literal(completed
+                                    ? "Пробуждение завершено. Откройте меню K или /jjk genetics."
+                                    : "Профиль ещё не создан."));
+                                return completed ? 1 : 0;
                             }))
                         .then(Commands.literal("genetics")
                                 .executes(context -> {
