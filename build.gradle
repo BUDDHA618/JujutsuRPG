@@ -205,3 +205,11 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
+
+tasks.register('checkBuilderTemplate', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.buddha618.jujutsurpg.BuilderTemplateCheck'
+    args file('src/main/resources/data/jujutsurpg/structures/technical_college/campus.nbt').absolutePath
+}
+tasks.named('check') { dependsOn 'checkBuilderTemplate' }
