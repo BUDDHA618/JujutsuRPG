@@ -6,5 +6,7 @@
   "entity.jujutsurpg.hanami_curse": "Ханами — лесное проклятие",
   "item.jujutsurpg.hanami_spawn_egg": "Яйцо призыва: Ханами — лесное проклятие",
   "entity.jujutsurpg.mahito_curse": "Махито — сшитое проклятие",
-  "item.jujutsurpg.mahito_spawn_egg": "Яйцо призыва: Махито — сшитое проклятие"
+  "item.jujutsurpg.mahito_spawn_egg": "Яйцо призыва: Махито — сшитое проклятие",
+  "entity.jujutsurpg.student_mage": "Студент-маг",
+  "item.jujutsurpg.student_spawn_egg": "Яйцо призыва студента-мага"
 }

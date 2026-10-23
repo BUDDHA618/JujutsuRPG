@@ -15,6 +15,9 @@ public final class CurseEntities {
     public static final RegistryObject<EntityType<CurseSpirit>> JOGO=type("jogo_curse",.9f,1.8f);
     public static final RegistryObject<EntityType<CurseSpirit>> HANAMI=type("hanami_curse",1.2f,2.7f);
     public static final RegistryObject<EntityType<CurseSpirit>> MAHITO=type("mahito_curse",.8f,2.1f);
+    public static final RegistryObject<EntityType<StudentMage>> STUDENT=TYPES.register("student_mage",()->
+        EntityType.Builder.of(StudentMage::new,MobCategory.CREATURE).sized(.6f,1.8f).clientTrackingRange(10).build("jujutsurpg:student_mage"));
+    public static final RegistryObject<Item> STUDENT_EGG=JujutsuRPGMod.ITEMS.register("student_spawn_egg",()->new ForgeSpawnEggItem(STUDENT,0x18233D,0xD9B782,new Item.Properties()));
     private static RegistryObject<EntityType<CurseSpirit>> type(String id,float width,float height) {
         return TYPES.register(id,()->EntityType.Builder.of(CurseSpirit::new,MobCategory.MONSTER).sized(width,height)
             .clientTrackingRange(10).build(JujutsuRPGMod.MODID+":"+id));
@@ -28,11 +31,13 @@ public final class CurseEntities {
         bus.addListener(CurseEntities::creative);
     }
     private static void attributes(EntityAttributeCreationEvent e) {
+        e.put(STUDENT.get(),net.minecraft.world.entity.Mob.createMobAttributes().add(Attributes.MAX_HEALTH,40)
+            .add(Attributes.MOVEMENT_SPEED,.28).add(Attributes.ATTACK_DAMAGE,5).add(Attributes.FOLLOW_RANGE,24).build());
         e.put(JOGO.get(),CurseSpirit.createMonsterAttributes().add(Attributes.MAX_HEALTH,70).add(Attributes.MOVEMENT_SPEED,.29).add(Attributes.ATTACK_DAMAGE,7).add(Attributes.FOLLOW_RANGE,28).build());
         e.put(HANAMI.get(),CurseSpirit.createMonsterAttributes().add(Attributes.MAX_HEALTH,120).add(Attributes.MOVEMENT_SPEED,.22).add(Attributes.ATTACK_DAMAGE,10).add(Attributes.ARMOR,8).add(Attributes.KNOCKBACK_RESISTANCE,.7).add(Attributes.FOLLOW_RANGE,28).build());
         e.put(MAHITO.get(),CurseSpirit.createMonsterAttributes().add(Attributes.MAX_HEALTH,85).add(Attributes.MOVEMENT_SPEED,.33).add(Attributes.ATTACK_DAMAGE,6).add(Attributes.FOLLOW_RANGE,28).build());
     }
     private static void creative(BuildCreativeModeTabContentsEvent e) {
-        if(e.getTabKey()==CreativeModeTabs.SPAWN_EGGS) { e.accept(JOGO_EGG);e.accept(HANAMI_EGG);e.accept(MAHITO_EGG); }
+        if(e.getTabKey()==CreativeModeTabs.SPAWN_EGGS) { e.accept(JOGO_EGG);e.accept(HANAMI_EGG);e.accept(MAHITO_EGG);e.accept(STUDENT_EGG); }
     }
 }

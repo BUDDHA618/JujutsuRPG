@@ -6,5 +6,7 @@
   "entity.jujutsurpg.hanami_curse": "Hanami Forest Curse",
   "item.jujutsurpg.hanami_spawn_egg": "Hanami Forest Curse Spawn Egg",
   "entity.jujutsurpg.mahito_curse": "Mahito Stitched Curse",
-  "item.jujutsurpg.mahito_spawn_egg": "Mahito Stitched Curse Spawn Egg"
+  "item.jujutsurpg.mahito_spawn_egg": "Mahito Stitched Curse Spawn Egg",
+  "entity.jujutsurpg.student_mage": "Student Mage",
+  "item.jujutsurpg.student_spawn_egg": "Student Mage Spawn Egg"
 }
