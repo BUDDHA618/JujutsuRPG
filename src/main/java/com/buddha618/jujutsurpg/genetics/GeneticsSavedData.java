@@ -11,25 +11,31 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class GeneticsSavedData extends SavedData {
 
+    public static final int VERSION = 2;
+    private SeasonLedger season = new SeasonLedger(new CompoundTag());
     private CompoundTag players = new CompoundTag();
 
     public static GeneticsSavedData get(MinecraftServer server) {
-        return server.overworld().getDataStorage()
-                .computeIfAbsent(
-                        GeneticsSavedData::load,
-                        GeneticsSavedData::new,
-                        "jujutsurpg_genetics"
-                );
+        return com.buddha618.jujutsurpg.persistence.PersistentStore.get(server, "jujutsurpg_genetics",
+            GeneticsSavedData::load, GeneticsSavedData::new);
     }
 
     public static GeneticsSavedData load(CompoundTag tag) {
         GeneticsSavedData data = new GeneticsSavedData();
+        if (tag.getInt("Version") > VERSION) throw new IllegalStateException("Unsupported future genetics version; do not downgrade this world");
+        if (tag.contains("Players") && !tag.contains("Players", Tag.TAG_COMPOUND))
+            throw new IllegalStateException("Invalid genetics Players tag");
+        if (tag.contains("Season") && !tag.contains("Season", Tag.TAG_COMPOUND))
+            throw new IllegalStateException("Invalid genetics Season tag");
         data.players = tag.getCompound("Players").copy();
+        data.season = new SeasonLedger(tag.getCompound("Season"));
         return data;
     }
 
     @Override
     public CompoundTag save(CompoundTag tag) {
+        tag.putInt("Version", VERSION);
+        tag.put("Season", season.save());
         tag.put("Players", players.copy());
         return tag;
     }
@@ -66,9 +72,11 @@ public class GeneticsSavedData extends SavedData {
     public GeneticProfile getOrCreate(UUID uuid) {
         String key = uuid.toString();
 
+        if (players.contains(key) && !hasProfile(uuid)) throw new IllegalStateException("Invalid existing genetic profile: " + key);
         if (!hasProfile(uuid)) {
             Clan clan = rollClan();
             InnateTechnique technique = rollTechnique(clan);
+            technique = independentFallback(technique, ThreadLocalRandom.current());
 
             CompoundTag profile = new CompoundTag();
             profile.putString("Clan", clan.getId());
@@ -79,11 +87,55 @@ public class GeneticsSavedData extends SavedData {
         }
 
         CompoundTag profile = players.getCompound(key);
+        if (profile.getInt("Version") > VERSION) throw new IllegalStateException("Unsupported future genetic profile version");
+        if (profile.getInt("Version") < VERSION) {
+            // Deterministic additive migration: NONE, unknown IDs and unrelated fields survive unchanged.
+            if (!profile.contains("Potentials", Tag.TAG_COMPOUND)) {
+                var potentials = new CompoundTag();
+                for (String skill : new String[]{"Capacity", "Output", "Control", "Efficiency", "Regeneration"})
+                    potentials.putString(skill, "normal");
+                profile.put("Potentials", potentials);
+            }
+            if (!profile.contains("Restriction")) profile.putString("Restriction", "none");
+            if (!profile.contains("Awakened")) profile.putBoolean("Awakened", false);
+            profile.putInt("Version", VERSION);
+            setDirty();
+        }
 
         return new GeneticProfile(
                 readClan(profile.getString("Clan")),
                 readTechnique(profile.getString("Technique"))
         );
+    }
+
+    public static InnateTechnique independentFallback(InnateTechnique inherited, java.util.random.RandomGenerator random) {
+        if (inherited != InnateTechnique.NONE || random.nextInt(100) >= 75) return inherited;
+        // Equal weights are a provisional choice; no rarity probabilities have been approved.
+        return InnateTechnique.INDEPENDENT.get(random.nextInt(InnateTechnique.INDEPENDENT.size()));
+    }
+    public long seasonNumber() { return season.number(); }
+    public int seasonCandidates() { return season.candidates(); }
+    public java.util.Optional<UUID> sixEyesOwner() { return season.owner(); }
+    public boolean hasSixEyes(UUID id) {
+        return season.owner().filter(id::equals).isPresent() && eligible(id);
+    }
+    private boolean eligible(UUID id) {
+        return hasProfile(id) && players.getCompound(id.toString()).getString("Clan").equals(Clan.GOJO.getId());
+    }
+    public boolean enrollSixEyes(UUID id) {
+        boolean changed = eligible(id) && season.enroll(id);
+        if (changed) setDirty();
+        return changed;
+    }
+    public java.util.Optional<UUID> drawSixEyes() {
+        var selected = season.draw(ThreadLocalRandom.current(), this::eligible);
+        if (selected.isPresent()) setDirty();
+        return selected;
+    }
+    public boolean advanceSeason(long expected) {
+        boolean changed = season.advance(expected);
+        if (changed) setDirty();
+        return changed;
     }
 
     private static Clan rollClan() {
