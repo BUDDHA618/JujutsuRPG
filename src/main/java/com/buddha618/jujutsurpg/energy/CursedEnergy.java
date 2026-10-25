@@ -16,31 +16,32 @@ import net.minecraftforge.network.PacketDistributor;
 public final class CursedEnergy extends SavedData {
     public static final double CAPACITY = 100;
     public static final double REGEN_PER_SECOND = 1;
+    private final java.util.Set<java.util.UUID> validated = new java.util.HashSet<>();
     private CompoundTag players = new CompoundTag();
     public static CursedEnergy get(ServerPlayer player) {
-        return player.getServer().overworld().getDataStorage().computeIfAbsent(CursedEnergy::load, CursedEnergy::new, "jujutsurpg_energy");
+        return get(player.getServer());
+    }
+    private static CursedEnergy get(net.minecraft.server.MinecraftServer server) {
+        return com.buddha618.jujutsurpg.persistence.PersistentStore.get(server, "jujutsurpg_energy", CursedEnergy::load, CursedEnergy::new);
     }
     public static CursedEnergy load(CompoundTag tag) {
         var data = new CursedEnergy();
+        if (tag.getInt("Version") > EnergyRules.VERSION) throw new IllegalStateException("Unsupported future energy data version");
+        if (tag.contains("Players") && !tag.contains("Players", 10)) throw new IllegalStateException("Invalid energy Players tag");
         data.players = tag.getCompound("Players").copy();
         return data;
     }
-    @Override public CompoundTag save(CompoundTag tag) { tag.put("Players", players.copy()); return tag; }
+    @Override public CompoundTag save(CompoundTag tag) { tag.putInt("Version", EnergyRules.VERSION); tag.put("Players", players.copy()); return tag; }
     /** Independent MVP defaults, not approved genetic coefficients. */
     private CompoundTag profile(ServerPlayer player) {
         String id = player.getUUID().toString();
-        if (!players.contains(id, 10)) {
-            double reserve = players.contains(id) ? players.getDouble(id) : CAPACITY;
-            var profile = new CompoundTag();
-            profile.putDouble("Current", finite(reserve, 0, CAPACITY));
-            profile.putDouble("Capacity", CAPACITY);
-            profile.putDouble("Output", 100);
-            profile.putDouble("Control", 1);
-            profile.putDouble("Efficiency", 1);
-            profile.putDouble("Regeneration", REGEN_PER_SECOND);
-            profile.putInt("Version", 1);
-            players.put(id, profile);
-            setDirty();
+        if (!validated.contains(player.getUUID())) {
+            var migrated = EnergyRules.migrate(players.get(id));
+            if (!migrated.equals(players.get(id))) {
+                players.put(id, migrated);
+                setDirty();
+            }
+            validated.add(player.getUUID());
         }
         return players.getCompound(id);
     }
@@ -49,17 +50,28 @@ public final class CursedEnergy extends SavedData {
     }
     public double current(ServerPlayer player) {
         var p = profile(player);
-        return finite(p.getDouble("Current"), 0, finite(p.getDouble("Capacity"), 1, 1000000));
+        return finite(p.getDouble("Current"), 0, finite(p.getDouble("Capacity"), 0, 1000000));
     }
     public double output(ServerPlayer player) {
         var p = profile(player);
         return finite(p.getDouble("Output"), 0, 1000000) * (p.getBoolean("Overloaded") ? .7 : 1);
+    }
+    public double loss(ServerPlayer player) {
+        double base = profile(player).getDouble("Loss");
+        boolean sixEyes = com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).hasSixEyes(player.getUUID());
+        return base * (sixEyes ? com.buddha618.jujutsurpg.FoundationConfig.SIX_EYES_LOSS.get() : 1);
     }
     public boolean trySpend(ServerPlayer player, double amount) {
         return tryTechnique(player, amount, amount, 0);
     }
     /** Output is reserved over a rolling second, never supplied by a client packet. */
     public boolean tryTechnique(ServerPlayer player, double baseCost, double requiredOutput, double minimumControl) {
+        return consume(player, baseCost, requiredOutput, minimumControl, true);
+    }
+    public boolean tryMaintained(ServerPlayer player, double baseCost, double requiredOutput, double minimumControl) {
+        return consume(player, baseCost, requiredOutput, minimumControl, false);
+    }
+    private boolean consume(ServerPlayer player, double baseCost, double requiredOutput, double minimumControl, boolean immediateSync) {
         if (!player.isAlive() || player.isSpectator() || !Double.isFinite(baseCost)
                 || !Double.isFinite(requiredOutput) || !Double.isFinite(minimumControl)
                 || baseCost < 0 || requiredOutput < 0 || minimumControl < 0) return false;
@@ -68,10 +80,11 @@ public final class CursedEnergy extends SavedData {
         var uses = recentUses.computeIfAbsent(player.getUUID(), id -> new java.util.ArrayDeque<>());
         while (!uses.isEmpty() && now - uses.peekFirst().tick() >= 20) uses.removeFirst();
         double used = uses.stream().mapToDouble(Use::output).sum();
-        double cost = baseCost / finite(p.getDouble("Efficiency"), .05, 1);
+        double cost = EnergyRules.cost(baseCost, loss(player));
         if ((!infinite(player) && (current(player) <= 0 || current(player) < cost)) || used + requiredOutput > output(player)
                 || finite(p.getDouble("Control"), 0, 1000000) < minimumControl) return false;
         if (!infinite(player)) p.putDouble("Current", current(player) - cost);
+        if (current(player) <= 0) EnergyReinforcement.onDepleted(player);
         uses.addLast(new Use(now, requiredOutput));
         // Test tuning: strain grows in proportion to output and decays at 5 units/sec.
         double strain = finite(p.getDouble("Strain") + requiredOutput / 2, 0, 100);
@@ -81,7 +94,7 @@ public final class CursedEnergy extends SavedData {
             p.putInt("OverloadRemaining", 60);
         }
         setDirty();
-        sync(player);
+        if (immediateSync) sync(player);
         return true;
     }
     private record Use(long tick, double output) {}
@@ -99,7 +112,7 @@ public final class CursedEnergy extends SavedData {
     }
     public void developerRestore(ServerPlayer player) {
         var p = profile(player);
-        p.putDouble("Current", finite(p.getDouble("Capacity"), 1, 1000000));
+        p.putDouble("Current", finite(p.getDouble("Capacity"), 0, 1000000));
         p.putDouble("Strain", 0);
         p.putBoolean("Overloaded", false);
         p.putInt("OverloadRemaining", 0);
@@ -110,8 +123,9 @@ public final class CursedEnergy extends SavedData {
     public void sync(ServerPlayer player) {
         var p = profile(player);
         CharacterNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-            new CharacterNetwork.Energy(current(player), finite(p.getDouble("Capacity"), 1, 1000000),
-                finite(p.getDouble("Regeneration"), 0, 1000000)));
+            new CharacterNetwork.Energy(current(player), finite(p.getDouble("Capacity"), 0, 1000000),
+                finite(p.getDouble("Regeneration"), 0, 1000000), output(player),
+                p.getDouble("Control"), loss(player), p.getDouble("Strain"), p.getBoolean("Overloaded")));
     }
     @SubscribeEvent public static void commands(net.minecraftforge.event.RegisterCommandsEvent event) {
         event.getDispatcher().register(net.minecraft.commands.Commands.literal("jjkenergy")
@@ -127,6 +141,15 @@ public final class CursedEnergy extends SavedData {
                         return spent ? 1 : 0;
                     }))));
     }
+    @SubscribeEvent public static void serverTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || event.getServer().getTickCount() % 20 != 0) return;
+        var data = get(event.getServer());
+        long now = event.getServer().overworld().getGameTime();
+        data.recentUses.entrySet().removeIf(e -> e.getValue().isEmpty() || now - e.getValue().peekLast().tick() >= 20);
+    }
+    @SubscribeEvent public static void logout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) get(player).validated.remove(player.getUUID());
+    }
     @SubscribeEvent public static void login(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) get(player).sync(player);
     }
@@ -141,14 +164,13 @@ public final class CursedEnergy extends SavedData {
                 || !player.isAlive()) return;
         var data = get(player);
         var p = data.profile(player);
-        p.putDouble("Current", Math.min(finite(p.getDouble("Capacity"), 1, 1000000),
-            data.current(player) + finite(p.getDouble("Regeneration"), 0, 1000000) / 20));
-        p.putDouble("Strain", Math.max(0, finite(p.getDouble("Strain"), 0, 100) - .25));
-        int remaining = Math.max(0, p.getInt("OverloadRemaining") - 1);
-        p.putInt("OverloadRemaining", remaining);
-        if (p.getBoolean("Overloaded") && remaining == 0 && p.getDouble("Strain") <= 40)
-            p.putBoolean("Overloaded", false);
-        data.setDirty();
+        if (EnergyRules.tick(p)) data.setDirty();
+        var uses = data.recentUses.get(player.getUUID());
+        if (uses != null) {
+            long now = player.getServer().overworld().getGameTime();
+            while (!uses.isEmpty() && now - uses.peekFirst().tick() >= 20) uses.removeFirst();
+            if (uses.isEmpty()) data.recentUses.remove(player.getUUID());
+        }
         if (player.tickCount % 20 == 0) data.sync(player);
     }
 }

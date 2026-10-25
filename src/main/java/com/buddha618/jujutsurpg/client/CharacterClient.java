@@ -35,6 +35,9 @@ public final class CharacterClient {
             }
         }
     }
+    @SubscribeEvent public static void energy(CharacterNetwork.EnergyEvent event) {
+        if (Minecraft.getInstance().screen instanceof CharacterScreen screen) screen.energy = event.energy;
+    }
     @SubscribeEvent
     public static void developerState(CharacterNetwork.DeveloperStateEvent event) {
         if (Minecraft.getInstance().screen instanceof DeveloperScreen screen) screen.receiveInfinite(event.infinite);

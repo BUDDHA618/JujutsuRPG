@@ -14,7 +14,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "8", "8"::equals, "8"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "9", "9"::equals, "9"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
@@ -37,7 +37,7 @@ public final class CharacterNetwork {
             .decoder(b -> new CastAbility(b.readUnsignedByte()))
             .consumerMainThread((m,context) -> {
                 var player=context.get().getSender();
-                if(player!=null) com.buddha618.jujutsurpg.techniques.LimitlessAbilities.activate(player,m.kind());
+                if(player!=null && allow(player,"cast",1)) com.buddha618.jujutsurpg.techniques.LimitlessAbilities.activate(player,m.kind());
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Developer.class, 4, NetworkDirection.PLAY_TO_SERVER)
@@ -45,7 +45,7 @@ public final class CharacterNetwork {
             .decoder(b -> new Developer(b.readUtf(16), b.readUtf(64), b.readUtf(64), b.readBoolean()))
             .consumerMainThread((m, context) -> {
                 var player = context.get().getSender();
-                if (player != null && player.hasPermissions(2)) {
+                if (player != null && player.hasPermissions(2) && allow(player,"developer",5)) {
                     if (m.action().equals("infinite") || m.action().equals("state")) {
                         var energy = com.buddha618.jujutsurpg.energy.CursedEnergy.get(player);
                         if (m.action().equals("infinite")) {
@@ -72,46 +72,57 @@ public final class CharacterNetwork {
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Reinforce.class, 3, NetworkDirection.PLAY_TO_SERVER)
-            .encoder((message, buffer) -> buffer.writeBoolean(message.defense()))
-            .decoder(buffer -> new Reinforce(buffer.readBoolean()))
+            .encoder((message, buffer) -> buffer.writeByte(message.mode()))
+            .decoder(buffer -> new Reinforce(buffer.readUnsignedByte()))
             .consumerMainThread((message, context) -> {
                 var player = context.get().getSender();
-                if (player != null) com.buddha618.jujutsurpg.energy.EnergyReinforcement.activate(player, message.defense());
+                if (player != null) com.buddha618.jujutsurpg.energy.EnergyReinforcement.activate(player, message.mode());
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Request.class, 0, NetworkDirection.PLAY_TO_SERVER)
             .encoder((message, buffer) -> {}).decoder(buffer -> new Request())
             .consumerMainThread((message, context) -> {
                 var player = context.get().getSender();
-                if (player != null) {
+                if (player != null && allow(player,"profile",5)) {
                     com.buddha618.jujutsurpg.energy.CursedEnergy.get(player).sync(player);
                     var data = GeneticsSavedData.get(player.getServer());
                     // Login creates the profile. Opening this screen never generates one.
                     if (data.hasProfile(player.getUUID())) {
                         var profile = data.getOrCreate(player.getUUID());
                         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-                            new Profile(profile.clan().getDisplayName(), GeneticsSavedData.get(player.getServer()).visibleTechnique(player.getUUID())));
+                            new Profile(profile.clan().getDisplayName(), GeneticsSavedData.get(player.getServer()).visibleTechnique(player.getUUID()), data.hasSixEyes(player.getUUID())));
                     }
                 }
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Energy.class, 2, NetworkDirection.PLAY_TO_CLIENT)
-            .encoder((message, buffer) -> { buffer.writeDouble(message.current()); buffer.writeDouble(message.maximum()); buffer.writeDouble(message.regeneration()); })
-            .decoder(buffer -> new Energy(buffer.readDouble(), buffer.readDouble(), buffer.readDouble()))
+            .encoder((message, buffer) -> { buffer.writeDouble(message.current()); buffer.writeDouble(message.maximum()); buffer.writeDouble(message.regeneration()); buffer.writeDouble(message.output());
+                buffer.writeDouble(message.control()); buffer.writeDouble(message.loss()); buffer.writeDouble(message.strain()); buffer.writeBoolean(message.overloaded()); })
+            .decoder(buffer -> new Energy(buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readBoolean()))
             .consumerMainThread((message, context) -> {
                 net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new EnergyEvent(message));
                 context.get().setPacketHandled(true);
             }).add();
         CHANNEL.messageBuilder(Profile.class, 1, NetworkDirection.PLAY_TO_CLIENT)
-            .encoder((message, buffer) -> { buffer.writeUtf(message.clan(), 128); buffer.writeUtf(message.technique(), 128); })
-            .decoder(buffer -> new Profile(buffer.readUtf(128), buffer.readUtf(128)))
+            .encoder((message, buffer) -> { buffer.writeUtf(message.clan(), 128); buffer.writeUtf(message.technique(), 128); buffer.writeBoolean(message.sixEyes()); })
+            .decoder(buffer -> new Profile(buffer.readUtf(128), buffer.readUtf(128), buffer.readBoolean()))
             .consumerMainThread((message, context) -> {
                 // Client subscribers consume this event only on the physical client.
                 net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new ProfileEvent(message));
                 context.get().setPacketHandled(true);
             }).add();
     }
-    public record Energy(double current, double maximum, double regeneration) {}
+    private static boolean allow(net.minecraft.server.level.ServerPlayer player, String action, int interval) {
+        long now = player.getServer().overworld().getGameTime();
+        String key = "jujutsurpg_packet_" + action;
+        var tag = player.getPersistentData();
+        long last = tag.getLong(key);
+        if (tag.contains(key) && now >= last && now - last < interval) return false;
+        tag.putLong(key, now);
+        return true;
+    }
+    public record Energy(double current, double maximum, double regeneration, double output,
+                         double control, double loss, double strain, boolean overloaded) {}
     public static final class EnergyEvent extends net.minecraftforge.eventbus.api.Event {
         public final Energy energy;
         public EnergyEvent(Energy energy) { this.energy = energy; }
@@ -128,9 +139,9 @@ public final class CharacterNetwork {
     }
     public record CastAbility(int kind) {}
     public record Developer(String action, String clan, String technique, boolean awakened) {}
-    public record Reinforce(boolean defense) {}
+    public record Reinforce(int mode) {}
     public record Request() {}
-    public record Profile(String clan, String technique) {}
+    public record Profile(String clan, String technique, boolean sixEyes) {}
     public static final class ProfileEvent extends net.minecraftforge.eventbus.api.Event {
         public final Profile profile;
         public ProfileEvent(Profile profile) { this.profile = profile; }

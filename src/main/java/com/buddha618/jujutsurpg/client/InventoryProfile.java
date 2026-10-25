@@ -28,15 +28,7 @@ public final class InventoryProfile {
             CharacterNetwork.CHANNEL.sendToServer(new CharacterNetwork.Request());
         }).bounds(4,screen.height-22,106,20).build());
     }
-    private static String technique(String id){return switch(id){
-        case "hidden"->"Скрыта до пробуждения";
-        case "none"->"Нет";
-        case "limitless"->"Безграничность";
-        case "ten_shadows"->"Десять теней";
-        case "projection_sorcery"->"Проекционная магия";
-        case "blood_manipulation"->"Управление кровью";
-        default->"Неизвестна";
-    };}
+    private static String technique(String id){return com.buddha618.jujutsurpg.genetics.InnateTechnique.displayName(id);}
     @SubscribeEvent public static void render(ScreenEvent.Render.Post e){
         if(!inventory(e.getScreen()))return;
         var screen=(AbstractContainerScreen<?>)e.getScreen();var mc=Minecraft.getInstance();var g=e.getGuiGraphics();

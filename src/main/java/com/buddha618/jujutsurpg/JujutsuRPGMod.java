@@ -83,6 +83,7 @@ public class JujutsuRPGMod
 
         // Register our mod's ForgeConfigSpec so that Forge can create and load the config file for us
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        context.registerConfig(ModConfig.Type.SERVER, FoundationConfig.SPEC, "jujutsurpg-foundation-server.toml");
     }
 
     private void commonSetup(final FMLCommonSetupEvent event)

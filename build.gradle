@@ -220,3 +220,10 @@ tasks.named('check') { dependsOn 'checkBuilderTemplate' }
     mainClass = 'com.buddha618.jujutsurpg.ReferenceBundleCheck'
     args file('output/reference_college').absolutePath
  }
+
+tasks.register('checkFoundation', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.buddha618.jujutsurpg.FoundationCheck'
+}
+tasks.named('check') { dependsOn 'checkFoundation' }
