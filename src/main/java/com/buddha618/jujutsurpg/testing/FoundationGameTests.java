@@ -16,6 +16,7 @@ public final class FoundationGameTests {
     public static void serverEnergyAndPersistence(GameTestHelper h) {
         var player = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(),
             new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "foundation-test"));
+        GeneticsSavedData.get(player.getServer()).selectOrigin(player.getUUID(),"none",new java.util.Random(1));
         var data = CursedEnergy.get(player);
         double before = data.current(player);
         h.assertTrue(data.tryMaintained(player, 20, 20, 0), "First server spend rejected");
@@ -43,6 +44,7 @@ public final class FoundationGameTests {
     public static void reinforcementStopsWithoutRemovingOtherBonuses(GameTestHelper h) {
         var player = net.minecraftforge.common.util.FakePlayerFactory.get(h.getLevel(),
             new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "reinforce-test"));
+        GeneticsSavedData.get(player.getServer()).selectOrigin(player.getUUID(),"none",new java.util.Random(1));
         var attack = player.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
         var other = java.util.UUID.randomUUID();
         attack.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(other, "Other mod", 7,

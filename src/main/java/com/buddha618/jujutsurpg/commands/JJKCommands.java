@@ -39,9 +39,13 @@ public class JJKCommands {
                                     ServerPlayer player = context.getSource()
                                             .getPlayerOrException();
 
+                                    if (!GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID())) {
+                                        com.buddha618.jujutsurpg.clans.ClanNetwork.send(player,"Сначала выберите происхождение.");
+                                        return 0;
+                                    }
                                     var profile = GeneticsSavedData
                                             .get(context.getSource().getServer())
-                                            .getOrCreate(player.getUUID());
+                                            .getProfile(player.getUUID());
 
                                     player.sendSystemMessage(
                                             Component.literal(

@@ -49,10 +49,13 @@ public final class CursedEnergy extends SavedData {
         return Double.isFinite(value) ? Math.max(min, Math.min(max, value)) : min;
     }
     public double current(ServerPlayer player) {
+        if (!com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID()) || com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).fullPhysical(player.getUUID())) return 0;
         var p = profile(player);
         return finite(p.getDouble("Current"), 0, finite(p.getDouble("Capacity"), 0, 1000000));
     }
     public double output(ServerPlayer player) {
+        if (!com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID())
+                || com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).fullPhysical(player.getUUID())) return 0;
         var p = profile(player);
         return finite(p.getDouble("Output"), 0, 1000000) * (p.getBoolean("Overloaded") ? .7 : 1);
     }
@@ -72,7 +75,9 @@ public final class CursedEnergy extends SavedData {
         return consume(player, baseCost, requiredOutput, minimumControl, false);
     }
     private boolean consume(ServerPlayer player, double baseCost, double requiredOutput, double minimumControl, boolean immediateSync) {
-        if (!player.isAlive() || player.isSpectator() || !Double.isFinite(baseCost)
+        if (!com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID())
+                || com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).fullPhysical(player.getUUID())
+                || !player.isAlive() || player.isSpectator() || !Double.isFinite(baseCost)
                 || !Double.isFinite(requiredOutput) || !Double.isFinite(minimumControl)
                 || baseCost < 0 || requiredOutput < 0 || minimumControl < 0) return false;
         var p = profile(player);
@@ -121,10 +126,13 @@ public final class CursedEnergy extends SavedData {
         sync(player);
     }
     public void sync(ServerPlayer player) {
+        if (!com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID())
+                || player instanceof net.minecraftforge.common.util.FakePlayer) return;
         var p = profile(player);
+        boolean physical = com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).fullPhysical(player.getUUID());
         CharacterNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
-            new CharacterNetwork.Energy(current(player), finite(p.getDouble("Capacity"), 0, 1000000),
-                finite(p.getDouble("Regeneration"), 0, 1000000), output(player),
+            new CharacterNetwork.Energy(current(player), physical ? 0 : finite(p.getDouble("Capacity"), 0, 1000000),
+                physical ? 0 : finite(p.getDouble("Regeneration"), 0, 1000000), output(player),
                 p.getDouble("Control"), loss(player), p.getDouble("Strain"), p.getBoolean("Overloaded")));
     }
     @SubscribeEvent public static void commands(net.minecraftforge.event.RegisterCommandsEvent event) {
@@ -161,8 +169,9 @@ public final class CursedEnergy extends SavedData {
     }
     @SubscribeEvent public static void tick(TickEvent.PlayerTickEvent event) {
         if (event.phase != TickEvent.Phase.END || !(event.player instanceof ServerPlayer player)
-                || !player.isAlive()) return;
+                || !player.isAlive() || !com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID())) return;
         var data = get(player);
+        if (com.buddha618.jujutsurpg.genetics.GeneticsSavedData.get(player.getServer()).fullPhysical(player.getUUID())) return;
         var p = data.profile(player);
         if (EnergyRules.tick(p)) data.setDirty();
         var uses = data.recentUses.get(player.getUUID());

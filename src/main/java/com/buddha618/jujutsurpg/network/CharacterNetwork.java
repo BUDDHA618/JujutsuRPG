@@ -14,7 +14,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 @Mod.EventBusSubscriber(modid = JujutsuRPGMod.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class CharacterNetwork {
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "9", "9"::equals, "9"::equals);
+        new ResourceLocation(JujutsuRPGMod.MODID, "character"), () -> "10", "10"::equals, "10"::equals);
 
     @SubscribeEvent
     public static void setup(FMLCommonSetupEvent event) {
@@ -45,7 +45,7 @@ public final class CharacterNetwork {
             .decoder(b -> new Developer(b.readUtf(16), b.readUtf(64), b.readUtf(64), b.readBoolean()))
             .consumerMainThread((m, context) -> {
                 var player = context.get().getSender();
-                if (player != null && player.hasPermissions(2) && allow(player,"developer",5)) {
+                if (player != null && player.hasPermissions(2) && GeneticsSavedData.get(player.getServer()).hasProfile(player.getUUID()) && allow(player,"developer",5)) {
                     if (m.action().equals("infinite") || m.action().equals("state")) {
                         var energy = com.buddha618.jujutsurpg.energy.CursedEnergy.get(player);
                         if (m.action().equals("infinite")) {
@@ -86,9 +86,9 @@ public final class CharacterNetwork {
                 if (player != null && allow(player,"profile",5)) {
                     com.buddha618.jujutsurpg.energy.CursedEnergy.get(player).sync(player);
                     var data = GeneticsSavedData.get(player.getServer());
-                    // Login creates the profile. Opening this screen never generates one.
+                    // Only confirmed origin selection creates a normal profile; reads never do.
                     if (data.hasProfile(player.getUUID())) {
-                        var profile = data.getOrCreate(player.getUUID());
+                        var profile = data.getProfile(player.getUUID());
                         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player),
                             new Profile(profile.clan().getDisplayName(), GeneticsSavedData.get(player.getServer()).visibleTechnique(player.getUUID()), data.hasSixEyes(player.getUUID())));
                     }

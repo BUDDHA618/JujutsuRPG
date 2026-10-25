@@ -227,3 +227,10 @@ tasks.register('checkFoundation', JavaExec) {
     mainClass = 'com.buddha618.jujutsurpg.FoundationCheck'
 }
 tasks.named('check') { dependsOn 'checkFoundation' }
+
+tasks.register('checkClans', JavaExec) {
+    dependsOn testClasses
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.buddha618.jujutsurpg.ClanCheck'
+}
+tasks.named('check') { dependsOn 'checkClans' }

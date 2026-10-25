@@ -4,6 +4,7 @@ package com.buddha618.jujutsurpg.genetics;
 public enum InnateTechnique {
 
     NONE("none"),
+    CURSED_SPEECH("cursed_speech"),
     LIMITLESS("limitless"),
     TEN_SHADOWS("ten_shadows"),
     PROJECTION_SORCERY("projection_sorcery"),
@@ -19,6 +20,7 @@ public enum InnateTechnique {
     public static String displayName(String id) {
         return switch (id) {
             case "hidden" -> "Не пробуждена";
+            case "cursed_speech" -> "Проклятая речь";
             case "none" -> "Нет";
             case "limitless" -> "Безграничность";
             case "ten_shadows" -> "Десять теней";

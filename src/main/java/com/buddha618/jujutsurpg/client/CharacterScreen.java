@@ -29,6 +29,10 @@ public final class CharacterScreen extends Screen {
                 net.minecraft.client.Minecraft.getInstance().setScreen(new DeveloperScreen()))
                 .bounds(width / 2 + 94, Math.min(height - 26, top + 210), 54, 20).build());
         }
+        addRenderableWidget(Button.builder(Component.literal("Школа клана"), button -> {
+            minecraft.setScreen(new ClanScreen());
+            com.buddha618.jujutsurpg.clans.ClanNetwork.CHANNEL.sendToServer(new com.buddha618.jujutsurpg.clans.ClanNetwork.Request());
+        }).bounds(width / 2 - 148, Math.min(height - 26, top + 210), 84, 20).build());
         addRenderableWidget(Button.builder(Component.literal("Закрыть"), button -> onClose())
             .bounds(width / 2 - 60, Math.min(height - 26, top + 210), 120, 20).build());
     }
@@ -49,7 +53,7 @@ public final class CharacterScreen extends Screen {
                     "Выход: %.1f/с • Контроль: %.1f", energy.output(), energy.control()),
                 energy == null ? "" : String.format(java.util.Locale.ROOT, "Потери: %.0f%% • Реген.: %.1f/с", energy.loss()*100, energy.regeneration()),
                 energy == null ? "" : String.format(java.util.Locale.ROOT, "Напряжение: %.1f • %s", energy.strain(), energy.overloaded()?"Перегрузка":"Норма"),
-                "Навыки и ранг: пока не реализованы"};
+                ClanClient.view == null ? "Клановое обучение: «Школа клана»" : "Мастерство клана: " + ClanClient.view.level() + " • Репутация: " + ClanClient.view.reputation()};
             for (int i = 0; i < rows.length; i++) {
                 int y = top + 47 + i * 17;
                 graphics.fill(left + 12, y - 5, right - 12, y + 12, 0xFF22283E);

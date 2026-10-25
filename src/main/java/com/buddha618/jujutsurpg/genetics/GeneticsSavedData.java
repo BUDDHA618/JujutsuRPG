@@ -11,7 +11,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class GeneticsSavedData extends SavedData {
 
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
     private SeasonLedger season = new SeasonLedger(new CompoundTag());
     private CompoundTag players = new CompoundTag();
 
@@ -57,7 +57,11 @@ public class GeneticsSavedData extends SavedData {
 
     /** Explicit operator override; preserves unrelated profile data. */
     public void developerSet(UUID uuid, Clan clan, InnateTechnique technique, boolean awakened) {
-        getOrCreate(uuid);
+        if (!hasProfile(uuid)) {
+            var initial = new CompoundTag(); initial.putString("Clan",clan.getId()); initial.putString("Technique",technique.getId());
+            initial.putString("OriginSource","developer"); players.put(uuid.toString(),initial);
+        }
+        getProfile(uuid);
         var p = players.getCompound(uuid.toString());
         p.putString("Clan", clan.getId());
         p.putString("Technique", technique.getId());
@@ -69,22 +73,11 @@ public class GeneticsSavedData extends SavedData {
         return players.contains(uuid.toString(), Tag.TAG_COMPOUND);
     }
 
-    public GeneticProfile getOrCreate(UUID uuid) {
+    public GeneticProfile getProfile(UUID uuid) {
         String key = uuid.toString();
 
         if (players.contains(key) && !hasProfile(uuid)) throw new IllegalStateException("Invalid existing genetic profile: " + key);
-        if (!hasProfile(uuid)) {
-            Clan clan = rollClan();
-            InnateTechnique technique = rollTechnique(clan);
-            technique = independentFallback(technique, ThreadLocalRandom.current());
-
-            CompoundTag profile = new CompoundTag();
-            profile.putString("Clan", clan.getId());
-            profile.putString("Technique", technique.getId());
-
-            players.put(key, profile);
-            setDirty();
-        }
+        if (!hasProfile(uuid)) throw new IllegalStateException("Character origin has not been selected");
 
         CompoundTag profile = players.getCompound(key);
         if (profile.getInt("Version") > VERSION) throw new IllegalStateException("Unsupported future genetic profile version");
@@ -98,6 +91,9 @@ public class GeneticsSavedData extends SavedData {
             }
             if (!profile.contains("Restriction")) profile.putString("Restriction", "none");
             if (!profile.contains("Awakened")) profile.putBoolean("Awakened", false);
+            if (!profile.contains("OriginSource")) profile.putString("OriginSource","legacy");
+            if (!profile.hasUUID("CharacterId")) profile.putUUID("CharacterId",UUID.nameUUIDFromBytes(("jujutsurpg:"+key).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            if (!profile.contains("CreatedSeason")) profile.putLong("CreatedSeason",season.number());
             profile.putInt("Version", VERSION);
             setDirty();
         }
@@ -120,7 +116,7 @@ public class GeneticsSavedData extends SavedData {
         return season.owner().filter(id::equals).isPresent() && eligible(id);
     }
     private boolean eligible(UUID id) {
-        return hasProfile(id) && players.getCompound(id.toString()).getString("Clan").equals(Clan.GOJO.getId());
+        return hasProfile(id) && !fullPhysical(id) && players.getCompound(id.toString()).getString("Clan").equals(Clan.GOJO.getId());
     }
     public boolean enrollSixEyes(UUID id) {
         boolean changed = eligible(id) && season.enroll(id);
@@ -138,36 +134,49 @@ public class GeneticsSavedData extends SavedData {
         return changed;
     }
 
-    private static Clan rollClan() {
-        int roll = ThreadLocalRandom.current().nextInt(100);
-
-        if (roll < 5) return Clan.GOJO;
-        if (roll < 20) return Clan.ZENIN;
-        if (roll < 35) return Clan.KAMO;
-
-        return Clan.NONE;
+    /** The sole ordinary creation entry point: validate first, build locally, insert once. */
+    public boolean selectOrigin(UUID uuid, String clanId, java.util.random.RandomGenerator random) {
+        if (players.contains(uuid.toString())) return false;
+        var definition = com.buddha618.jujutsurpg.clans.ClanRegistry.find(clanId);
+        if (definition.isEmpty()) return false;
+        var profile = new CompoundTag();
+        profile.putString("Clan",clanId);
+        profile.putString("Restriction","none"); // Random restrictions remain disabled until their physical path is implemented.
+        profile.putString("Technique",rollCompatible(definition.get(),false,random).getId());
+        var potentials = new CompoundTag();
+        for (String skill : new String[]{"Capacity","Output","Control","Efficiency","Regeneration"}) {
+            int roll = random.nextInt(100);
+            potentials.putString(skill,roll<15?"low":roll<80?"normal":roll<98?"high":"exceptional");
+        }
+        profile.put("Potentials",potentials); // Proposed distribution; stat effects await energy progression.
+        profile.putString("OriginSource","chosen");
+        profile.putUUID("CharacterId",UUID.randomUUID()); profile.putLong("CreatedSeason",season.number());
+        players.put(uuid.toString(),profile);
+        getProfile(uuid); setDirty(); return true;
     }
-
-    private static InnateTechnique rollTechnique(Clan clan) {
-        int roll = ThreadLocalRandom.current().nextInt(100);
-
-        return switch (clan) {
-            case GOJO -> roll < 20
-                    ? InnateTechnique.LIMITLESS
-                    : InnateTechnique.NONE;
-
-            case ZENIN -> roll < 10
-                    ? InnateTechnique.TEN_SHADOWS
-                    : roll < 30
-                    ? InnateTechnique.PROJECTION_SORCERY
-                    : InnateTechnique.NONE;
-
-            case KAMO -> roll < 40
-                    ? InnateTechnique.BLOOD_MANIPULATION
-                    : InnateTechnique.NONE;
-
-            case NONE -> InnateTechnique.NONE;
-        };
+    public static InnateTechnique rollCompatible(com.buddha618.jujutsurpg.clans.ClanDefinition definition,
+                                                 boolean fullPhysicalRestriction, java.util.random.RandomGenerator random) {
+        return fullPhysicalRestriction ? InnateTechnique.NONE : definition.roll(random);
+    }
+    public boolean fullPhysical(UUID id) {
+        return hasProfile(id) && players.getCompound(id.toString()).getString("Restriction").equals("full_physical");
+    }
+    public com.buddha618.jujutsurpg.clans.ClanProgression progression(UUID id) {
+        getProfile(id);
+        var p = players.getCompound(id.toString());
+        if (!p.contains("ClanProgress")) { p.put("ClanProgress",new CompoundTag()); setDirty(); }
+        if (!p.contains("ClanProgress",Tag.TAG_COMPOUND)) throw new IllegalStateException("Invalid clan progression");
+        return new com.buddha618.jujutsurpg.clans.ClanProgression(p.getCompound("ClanProgress"),this::setDirty);
+    }
+    /** Explicit one-time legacy migration, with a full profile snapshot and no technique reroll. */
+    public boolean migrateLegacyOrigin(UUID id, String clanId) {
+        if (!hasProfile(id) || com.buddha618.jujutsurpg.clans.ClanRegistry.find(clanId).isEmpty()) return false;
+        getProfile(id);
+        var p = players.getCompound(id.toString());
+        if (!p.getString("OriginSource").equals("legacy") || p.getBoolean("LegacyMigrationUsed")) return false;
+        p.put("BeforeOriginMigration",p.copy());
+        p.putString("Clan",clanId); p.putString("OriginSource","migrated"); p.putBoolean("LegacyMigrationUsed",true);
+        p.remove("ClanProgress"); setDirty(); return true;
     }
 
     private static Clan readClan(String id) {

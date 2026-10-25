@@ -30,8 +30,8 @@ public final class FoundationCheck {
         var root = new CompoundTag(); root.put("Players", players);
         var genetics = GeneticsSavedData.load(roundTrip(root));
         for (int i = 0; i < 100; i++) {
-            check(genetics.getOrCreate(oldId).technique() == InnateTechnique.NONE, "Legacy NONE rerolled");
-            check(genetics.getOrCreate(oldId).clan() == Clan.GOJO, "Legacy clan changed");
+            check(genetics.getProfile(oldId).technique() == InnateTechnique.NONE, "Legacy NONE rerolled");
+            check(genetics.getProfile(oldId).clan() == Clan.GOJO, "Legacy clan changed");
             check(genetics.visibleTechnique(oldId).equals("hidden"), "Secret leaked before awakening");
         }
         var saved = roundTrip(genetics.save(new CompoundTag()));
@@ -55,7 +55,7 @@ public final class FoundationCheck {
         check(genetics.advanceSeason(1), "Season transition failed");
         check(!genetics.advanceSeason(1), "Repeated transition accepted");
         check(!genetics.hasSixEyes(oldId), "Old rights remain active");
-        check(genetics.getOrCreate(oldId).technique() == InnateTechnique.NONE, "Season reset changed genetics");
+        check(genetics.getProfile(oldId).technique() == InnateTechnique.NONE, "Season reset changed genetics");
         check(genetics.save(new CompoundTag()).getCompound("Season").getCompound("History")
             .getCompound("1").getUUID("Owner").equals(oldId), "Missing historical owner");
         check(genetics.enrollSixEyes(other), "New season registration failed");
@@ -105,7 +105,7 @@ public final class FoundationCheck {
         try { EnergyRules.migrate(StringTag.valueOf("broken")); throw new AssertionError("Malformed energy reset"); } catch (IllegalStateException expected) { assertions++; }
         var brokenPlayers = new CompoundTag(); brokenPlayers.putString(oldId.toString(), "broken");
         var brokenRoot = new CompoundTag(); brokenRoot.put("Players", brokenPlayers);
-        try { GeneticsSavedData.load(brokenRoot).getOrCreate(oldId); throw new AssertionError("Malformed genetics rerolled"); } catch (IllegalStateException expected) { assertions++; }
+        try { GeneticsSavedData.load(brokenRoot).getProfile(oldId); throw new AssertionError("Malformed genetics rerolled"); } catch (IllegalStateException expected) { assertions++; }
         System.out.println("Foundation checks passed: " + assertions + " assertions (NBT migration, privacy, 75%, seasons, CE, overload)");
     }
 }
